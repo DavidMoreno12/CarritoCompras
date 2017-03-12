@@ -1,4 +1,15 @@
 class ProductsController < ApplicationController
+  include ActionController::Live
+  def download
+    response.headers['Content-Type'] = 'text/plain'
+    40.times do |i|
+      response.stream.write "Line #{i}\n\n"
+      sleep 0.10
+    end
+    response.stream.write "Fini.\n"
+  ensure
+    response.stream.close
+  end
   before_action :set_product, only: [:show, :edit, :update, :destroy]
 
   # GET /products
@@ -74,4 +85,21 @@ class ProductsController < ApplicationController
     def product_params
       params.require(:product).permit(:title, :description, :image_url, :price)
     end
+
+  def who_bought
+    @product = Product.find(params[:id])
+    @latest_order = @product.orders.order(:updated_at).last
+    if stale?(@latest_order)
+      respond_to do |format|
+        format.html
+        format.xml #{ render xml: @product.to_xml(include: :orders) }
+        format.atom
+        format.json { render json: @product.to_json(include: :orders) }
+      end
+    end
+  end
+
+
+
 end
+
